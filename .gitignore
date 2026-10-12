@@ -1,2 +1,26 @@
 # Ignore the blueprint markdown file(rahasia bos)
 blueprint.md
+
+# Ignore the build folder
+build/
+
+# Keep byte-exact working snapshots local; the guide and agent instructions remain reviewable.
+.agents/
+
+# The guide and per-device secrets stay local. Keep model weights out of Git by default.
+edge-config.local.json
+data/
+*.dpapi
+models/**/*.onnx
+models/**/*.bin
+models/**/*.engine
+models/**/*.plan
+
+# Python is used only for local documentation/model tooling.
+__pycache__/
+*.py[cod]
+
+# Atomic document edits may leave a hidden temporary file if interrupted.
+.*.tmp
+
+.vscode/
