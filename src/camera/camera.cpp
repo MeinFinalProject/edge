@@ -4,8 +4,10 @@
 #include <windows.graphics.directx.direct3d11.interop.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Media.Capture.h>
+#include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Media.Capture.Frames.h>
 #include <winrt/Windows.Media.MediaProperties.h>
+#include <iostream>
 
 namespace
 {
@@ -202,6 +204,9 @@ namespace FaceRuntime
             const double aktualFPS =
                 static_cast<double>(rate.Numerator()) /
                 static_cast<double>(rate.Denominator());
+            std::wcout << L"Format: " << format.Subtype().c_str()
+                       << L" | Res: " << videoFormat.Width() << L"x" << videoFormat.Height()
+                       << L" | FPS: " << aktualFPS << std::endl;
             const double fpsError =
                 std::abs(aktualFPS - static_cast<double>(cameraConfig.fps));
 

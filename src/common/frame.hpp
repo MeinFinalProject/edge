@@ -10,7 +10,7 @@ namespace FaceRuntime
     struct Frame
     {
         winrt::com_ptr<ID3D11Texture2D> texture;
-        std::uint64_t frameId;
+        std::uint64_t frameId = 0;
 
         [[nodiscard]] bool valid() const noexcept
         {

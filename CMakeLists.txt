@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.21)
 
 project(FaceRuntime LANGUAGES CXX)
 
-add_executable(FaceRuntime src/main.cpp
-    src/common/frame.hpp
-    src/camera/camera.hpp)
+add_executable(FaceRuntime 
+    src/main.cpp
+    src/camera/camera.cpp
+)
 
 target_compile_features(FaceRuntime PRIVATE cxx_std_20)
 
