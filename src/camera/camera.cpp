@@ -1,4 +1,5 @@
 #include "camera.hpp"
+#include "common/frame_mailbox.hpp"
 #include <mutex>
 
 #include <windows.graphics.directx.direct3d11.interop.h>
@@ -46,10 +47,7 @@ namespace FaceRuntime
         std::atomic_bool stopRequested{false};
         std::atomic_bool running{false};
 
-        std::mutex mailboxMutex;
-        std::condition_variable mailboxcv;
-        Frame frame;
-        bool hasFrame = false;
+        FrameMailbox mailbox;
 
         std::mutex livecycleMutex;
         std::condition_variable livecyclecv;
@@ -96,9 +94,7 @@ namespace FaceRuntime
             }
             livecyclecv.notify_all();
 
-            std::unique_lock lock(mailboxMutex);
-            mailboxcv.wait(lock, [this]
-                           { return stopRequested.load(std::memory_order_acquire); });
+            stopRequested.wait(false, std::memory_order_acquire);
         }
         catch (...)
         {
@@ -256,20 +252,13 @@ namespace FaceRuntime
 
             auto texture = textureFromSurface(surface);
 
-            Frame newFrame;
-            newFrame.texture = std::move(texture);
-            {
-                std::scoped_lock lock(mailboxMutex);
-                newFrame.frameId = frame.frameId + 1;
-                frame = std::move(newFrame);
-                hasFrame = true;
-            }
-            mailboxcv.notify_all();
+            mailbox.publish(std::move(texture));
         }
         catch (...)
         {
             stopRequested.store(true, std::memory_order_release);
-            mailboxcv.notify_all();
+            stopRequested.notify_all();
+            mailbox.close();
         }
     }
 
@@ -311,7 +300,8 @@ namespace FaceRuntime
             return;
         }
         impl_->stopRequested.store(true, std::memory_order_release);
-        impl_->mailboxcv.notify_all();
+        impl_->stopRequested.notify_all();
+        impl_->mailbox.close();
         if (impl_->captureThread.joinable())
         {
             impl_->captureThread.join();
@@ -320,6 +310,13 @@ namespace FaceRuntime
 
     void Camera::start()
     {
+        stop();
+        {
+            std::scoped_lock lock(impl_->livecycleMutex);
+            impl_->startFinished = false;
+            impl_->startError = nullptr;
+        }
+        impl_->mailbox.reopen();
         impl_->stopRequested.store(false, std::memory_order_release);
         impl_->captureThread = std::thread([this]
                                            { impl_->captureLoop(); });
@@ -337,19 +334,9 @@ namespace FaceRuntime
         }
     }
 
-    std::optional<Frame> Camera::waitForFrame(
-        std::uint64_t last_frame_id,
+    [[nodiscard]] winrt::com_ptr<ID3D11Texture2D> Camera::waitForFrame(
         std::chrono::milliseconds timeout)
     {
-        std::unique_lock lock(impl_->mailboxMutex);
-        const bool changed = impl_->mailboxcv.wait_for(lock, timeout, [this, last_frame_id]
-                                                       { return impl_->hasFrame &&
-                                                                impl_->frame.frameId > last_frame_id; });
-
-        if (!changed)
-        {
-            return std::nullopt;
-        }
-        return impl_->frame;
+        return impl_->mailbox.waitForFrame(timeout);
     }
 }

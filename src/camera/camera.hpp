@@ -2,8 +2,8 @@
 #include <memory>
 #include <optional>
 #include <chrono>
-
-#include "common/frame.hpp"
+#include <d3d11.h>
+#include <winrt/Windows.Graphics.DirectX.Direct3D11.h>
 
 namespace FaceRuntime
 {
@@ -27,8 +27,7 @@ namespace FaceRuntime
 
         void start();
         void stop() noexcept;
-        [[nodiscard]] std::optional<Frame> waitForFrame(
-            std::uint64_t lastFrameId,
+        [[nodiscard]] winrt::com_ptr<ID3D11Texture2D> waitForFrame(
             std::chrono::milliseconds timeout);
 
     private:
