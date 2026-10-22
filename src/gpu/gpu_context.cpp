@@ -12,6 +12,26 @@ namespace FaceRuntime::Gpu
         createAiContexts();
     }
 
+    winrt::com_ptr<ID3D11DeviceContext> GpuContext::getD3D11Context() const
+    {
+        return d3d11Context;
+    }
+
+    winrt::com_ptr<ID3D12Device> GpuContext::getD3D12Device() const
+    {
+        return d3d12Device;
+    }
+
+    winrt::com_ptr<ID3D12CommandQueue> GpuContext::getCommandQueue() const
+    {
+        return commandQueue;
+    }
+
+    winrt::com_ptr<ID3D11Device> GpuContext::getD3D11Device() const
+    {
+        return d3d11Device;
+    }
+
     winrt::Windows::AI::MachineLearning::LearningModelDevice GpuContext::getLearningDevice() const
     {
         return learningModelDevice;
@@ -32,7 +52,6 @@ namespace FaceRuntime::Gpu
 
         winrt::check_hresult(d3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue)));
 
-        winrt::com_ptr<ID3D11DeviceContext> d3d11Context;
         IUnknown *commandQueues[] = {commandQueue.get()};
         winrt::check_hresult(D3D11On12CreateDevice(
             d3d12Device.get(),

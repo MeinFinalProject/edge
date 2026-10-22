@@ -26,6 +26,10 @@ namespace FaceRuntime::Gpu
 
         winrt::Windows::AI::MachineLearning::LearningModelDevice getLearningDevice() const;
         std::shared_ptr<CameraTextureImporter> getCameraTextureImporter() const;
+        winrt::com_ptr<ID3D11DeviceContext> getD3D11Context() const;
+        winrt::com_ptr<ID3D12Device> getD3D12Device() const;
+        winrt::com_ptr<ID3D12CommandQueue> getCommandQueue() const;
+        winrt::com_ptr<ID3D11Device> getD3D11Device() const;
 
     private:
         void initializeHardware();
@@ -35,6 +39,7 @@ namespace FaceRuntime::Gpu
         winrt::com_ptr<ID3D12CommandQueue> commandQueue;
 
         winrt::com_ptr<ID3D11Device> d3d11Device;
+        winrt::com_ptr<ID3D11DeviceContext> d3d11Context;
         winrt::com_ptr<ID3D11On12Device> d3d11On12Device;
 
         winrt::Windows::AI::MachineLearning::LearningModelDevice learningModelDevice{nullptr};

@@ -3,6 +3,9 @@
 #include <d3d11.h>
 #include <d3d11on12.h>
 #include <mutex>
+#include <utility>
+#include <iostream>
+#include <stdexcept>
 
 namespace FaceRuntime::Gpu
 {
@@ -16,19 +19,57 @@ namespace FaceRuntime::Gpu
     class WrappedAccess
     {
     public:
-        WrappedAccess(winrt::com_ptr<ID3D11On12Device> device, ID3D11Resource *resource) noexcept : device(std::move(device)), resource(resource), active(device != nullptr && resource != nullptr)
+        WrappedAccess(
+            winrt::com_ptr<ID3D11On12Device> device,
+            ID3D11Resource *resource)
+            : device(std::move(device)),
+              resource(resource),
+              active(this->device != nullptr && resource != nullptr)
         {
-            if (active)
+            std::cout << "[WRAP] constructor mulai\n";
+
+            if (!this->device)
             {
-                device->AcquireWrappedResources(&resource, 1);
+                throw std::runtime_error(
+                    "WrappedAccess: device null.");
             }
+
+            if (!this->resource)
+            {
+                throw std::runtime_error(
+                    "WrappedAccess: resource null.");
+            }
+
+            std::cout << "[WRAP] device dan resource valid\n";
+
+            ID3D11Resource *resources[] = {
+                this->resource};
+
+            std::cout << "[WRAP] sebelum AcquireWrappedResources\n";
+
+            this->device->AcquireWrappedResources(
+                resources,
+                1);
+
+            std::cout << "[WRAP] sesudah AcquireWrappedResources\n";
         }
 
         ~WrappedAccess()
         {
+            std::cout << "[WRAP] destructor mulai, active="
+                      << active
+                      << "\n";
+
             if (active)
             {
-                device->ReleaseWrappedResources(&resource, 1);
+                ID3D11Resource *resources[] = {
+                    resource};
+
+                device->ReleaseWrappedResources(
+                    resources,
+                    1);
+
+                std::cout << "[WRAP] ReleaseWrappedResources selesai\n";
             }
         }
 
