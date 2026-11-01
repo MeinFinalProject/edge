@@ -1,92 +1,56 @@
-#include "camera/camera.hpp"
-#include "gpu/gpu_context.hpp"
-#include "preprocess/preprocess_contracts.hpp"
-
 #include <chrono>
 #include <iostream>
+#include <winrt/base.h>
+#include <winrt/Windows.Media.Capture.Frames.h>
+#include <winrt/Windows.Foundation.h>
+#include "camera/camera.hpp"
+#include "gpu/gpu_context.hpp"
+#include "gpu/nv12_bridge.hpp"
+using namespace std::chrono_literals;
 
 int main()
 {
-    FaceRuntime::Gpu::GpuContext gpuContext;
-    FaceRuntime::Camera camera;
-    camera.start();
-
-    auto firstTexture = camera.waitForFrame(
-        std::chrono::seconds(2));
-    if (!firstTexture)
+    winrt::init_apartment(winrt::apartment_type::multi_threaded);
+    try
     {
-        std::cerr << "timeout menunggu frame\n";
-        return 1;
-    }
+        using namespace FaceRuntime;
+        CameraConfig cameraConfig;
+        Gpu::GpuContext gpu;
+        Gpu::Nv12Bridge bridge(gpu.deviceRef());
+        Camera camera(cameraConfig);
+        camera.start();
 
-    std::cout << " diterima, texture: " << firstTexture.get() << "\n";
-
-    D3D11_TEXTURE2D_DESC desc{};
-
-    firstTexture->GetDesc(&desc);
-
-    std::cout << "height dan width texture: "
-              << desc.Height << "x" << desc.Width << " format: " << (desc.Format == DXGI_FORMAT_NV12 ? "NV12" : "Bukan NV12") << "\n";
-
-    FaceRuntime::Preprocess::ScrfdGpuServices services{
-        gpuContext.getCameraTextureImporter(),
-        gpuContext.getD3D12Device(),
-        gpuContext.getCommandQueue(),
-        gpuContext.getLearningDevice()};
-
-    FaceRuntime::Preprocess::ScrfdPreprocessor scrfd(
-        firstTexture,
-        std::move(services));
-
-    std::cout << "SCRFD preprocessor berhasil dibuat\n";
-
-    for (int i = 0; i < 30; ++i)
-    {
-        auto texture = camera.waitForFrame(
-            std::chrono::seconds(2));
-
-        if (!texture)
+        const auto startTime = std::chrono::steady_clock::now();
+        int processed = 0;
+        int timeouts = 0;
+        while (std::chrono::steady_clock::now() - startTime < 10s)
         {
-            std::cerr << "timeout menunggu frame\n";
-            break;
-        }
-
-        try
-        {
-            auto tensor = scrfd.preprocess(
-                std::move(texture));
-
-            if (!tensor)
+            auto frame = camera.waitForFrame(2000ms);
+            if (!frame)
             {
-                std::cerr
-                    << "SCRFD preprocess selesai, "
-                       "tetapi tensor masih kosong\n";
-                break;
+                ++timeouts;
+                continue;
             }
+            auto texture = TextureOf(frame);
+            auto const nv12 = bridge.acquire(texture);
+            (void)nv12;
+            std::this_thread::sleep_for(100ms); // tiket dipegang 100 ms, seperti process() yang berat
+            frame.Close();
+            ++processed;
+        }
+        std::cout << "diproses " << processed << " frame dalam 10 s (harapan: sekitar 91), "
+                  << "timeout " << timeouts << ", tekstur di cache "
+                  << bridge.cachedTextureCount() << "\n";
 
-            std::cout << "SCRFD tensor berhasil dibuat\n";
-        }
-        catch (winrt::hresult_error const &error)
-        {
-            std::cerr
-                << "SCRFD preprocess gagal dengan HRESULT: 0x"
-                << std::hex
-                << static_cast<unsigned long>(
-                       error.code().value)
-                << std::dec
-                << "\n";
-            break;
-        }
-        catch (std::exception const &error)
-        {
-            std::cerr
-                << "SCRFD preprocess gagal: "
-                << error.what()
-                << "\n";
-            break;
-        }
+        camera.stop();
     }
-    std::cout << "menghentikan kamera\n";
-
-    camera.stop();
+    catch (winrt::hresult_error const &e)
+    {
+        std::cerr << "HRESULT 0x" << std::hex << static_cast<unsigned long>(e.code().value)
+                  << ": " << winrt::to_string(e.message()) << "\n";
+    }
+    catch (std::exception const &e)
+    {
+        std::cerr << e.what() << "\n";
+    }
 }

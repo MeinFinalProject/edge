@@ -5,7 +5,6 @@
 #include <d3d12.h>
 #include <d3d11_4.h>
 #include <memory>
-#include "../gpu/camera_texture_import.hpp"
 
 namespace FaceRuntime::Preprocess
 {
@@ -50,27 +49,15 @@ namespace FaceRuntime::Preprocess
         float rmse = 0.0F;
     };
 
-    struct ScrfdGpuServices
-    {
-        std::shared_ptr<FaceRuntime::Gpu::CameraTextureImporter> importer;
-
-        winrt::com_ptr<ID3D12Device> d3d12Device;
-        winrt::com_ptr<ID3D12CommandQueue> commandQueue;
-
-        winrt::Windows::AI::MachineLearning::LearningModelDevice
-            learningDevice{nullptr};
-    };
-
     class ScrfdPreprocessor
     {
     public:
-        ScrfdPreprocessor(winrt::com_ptr<ID3D11Texture2D> firstTexture, ScrfdGpuServices services, ScrfdPreprocessConfig config = {});
+        ScrfdPreprocessor(winrt::com_ptr<ID3D11Texture2D> firstTexture, ScrfdPreprocessConfig config = {});
         winrt::Windows::AI::MachineLearning::TensorFloat preprocess(winrt::com_ptr<ID3D11Texture2D> texture);
 
     private:
         ScrfdPreprocessConfig config;
         ScrfdPreprocessTransform transform;
-        ScrfdGpuServices services;
 
         winrt::com_ptr<ID3D12Resource> tensorBuffer;
         winrt::com_ptr<ID3D12Resource> constantBuffer;

@@ -1,5 +1,4 @@
 #include "gpu_context.hpp"
-#include "camera_texture_import.hpp"
 #include <memory>
 #include <winrt/base.h>
 #include <windows.ai.machinelearning.native.h>
@@ -8,78 +7,87 @@ namespace FaceRuntime::Gpu
 {
     GpuContext::GpuContext()
     {
-        initializeHardware();
-        createAiContexts();
-    }
+        winrt::check_hresult(
+            D3D12CreateDevice(
+                nullptr,
+                D3D_FEATURE_LEVEL_12_0,
+                IID_PPV_ARGS(d3d12Device.put())));
 
-    winrt::com_ptr<ID3D11DeviceContext> GpuContext::getD3D11Context() const
-    {
-        return d3d11Context;
-    }
-
-    winrt::com_ptr<ID3D12Device> GpuContext::getD3D12Device() const
-    {
-        return d3d12Device;
-    }
-
-    winrt::com_ptr<ID3D12CommandQueue> GpuContext::getCommandQueue() const
-    {
-        return commandQueue;
-    }
-
-    winrt::com_ptr<ID3D11Device> GpuContext::getD3D11Device() const
-    {
-        return d3d11Device;
-    }
-
-    winrt::Windows::AI::MachineLearning::LearningModelDevice GpuContext::getLearningDevice() const
-    {
-        return learningModelDevice;
-    }
-
-    std::shared_ptr<CameraTextureImporter> GpuContext::getCameraTextureImporter() const
-    {
-        return textureImporter;
-    }
-
-    void GpuContext::initializeHardware()
-    {
-        winrt::check_hresult(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3d12Device)));
-
-        D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+        D3D12_COMMAND_QUEUE_DESC queueDesc{};
         queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+        queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+        queueDesc.NodeMask = 0;
+        winrt::check_hresult(
+            d3d12Device->CreateCommandQueue(
+                &queueDesc,
+                IID_PPV_ARGS(commandQueue.put())));
 
-        winrt::check_hresult(d3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue)));
+        winrt::check_hresult(
+            d3d12Device->CreateFence(
+                0,
+                D3D12_FENCE_FLAG_NONE,
+                IID_PPV_ARGS(fence.put())));
+        fenceEvent.attach(
+            ::CreateEventW(
+                nullptr,
+                FALSE,
+                FALSE,
+                nullptr));
+        if (!fenceEvent)
+        {
+            winrt::throw_last_error();
+        }
 
-        IUnknown *commandQueues[] = {commandQueue.get()};
-        winrt::check_hresult(D3D11On12CreateDevice(
-            d3d12Device.get(),
-            D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-            nullptr,
-            0,
-            commandQueues,
-            1,
-            0,
-            d3d11Device.put(),
-            d3d11Context.put(),
-            nullptr));
+        winrt::com_ptr<ILearningModelDeviceFactoryNative> factory =
+            winrt::get_activation_factory<winrt::Windows::AI::MachineLearning::LearningModelDevice,
+                                          ILearningModelDeviceFactoryNative>();
 
-        winrt::check_hresult(d3d11Device.as(IID_PPV_ARGS(&d3d11On12Device)));
+        winrt::com_ptr<::IUnknown> unknownDevice;
+        winrt::check_hresult(
+            factory->CreateFromD3D12CommandQueue(
+                commandQueue.get(),
+                unknownDevice.put()));
+        unknownDevice.as<winrt::Windows::AI::MachineLearning::LearningModelDevice>();
     }
 
-    void GpuContext::createAiContexts()
+    GpuContext::~GpuContext()
     {
-        winrt::com_ptr<ILearningModelDeviceFactoryNative> factory =
-            winrt::get_activation_factory<
-                winrt::Windows::AI::MachineLearning::LearningModelDevice,
-                ILearningModelDeviceFactoryNative>();
+        try
+        {
+            waitIdle();
+        }
+        catch (...)
+        {
+        }
+    }
 
-        winrt::com_ptr<IUnknown> unknownDevice;
-        winrt::check_hresult(factory->CreateFromD3D12CommandQueue(commandQueue.get(), unknownDevice.put()));
+    void GpuContext::waitIdle()
+    {
+        const std::uint64_t targetFenceValue = ++lastFenceValue;
+        winrt::check_hresult(
+            commandQueue->Signal(
+                fence.get(),
+                targetFenceValue));
 
-        learningModelDevice = unknownDevice.as<winrt::Windows::AI::MachineLearning::LearningModelDevice>();
+        if (fence->GetCompletedValue() < targetFenceValue)
+        {
+            winrt::check_hresult(
+                fence->SetEventOnCompletion(
+                    targetFenceValue,
+                    fenceEvent.get()));
+            if (::WaitForSingleObject(
+                    fenceEvent.get(),
+                    INFINITE) != WAIT_OBJECT_0)
+            {
+                winrt::throw_last_error();
+            }
+        }
 
-        textureImporter = std::make_shared<CameraTextureImporter>(d3d11Device, d3d12Device, d3d11On12Device);
+        if (fence->GetCompletedValue() == UINT64_MAX)
+        {
+            const HRESULT reason = d3d12Device->GetDeviceRemovedReason();
+            winrt::throw_hresult(FAILED(reason) ? reason : DXGI_ERROR_DEVICE_REMOVED);
+        }
     }
 }

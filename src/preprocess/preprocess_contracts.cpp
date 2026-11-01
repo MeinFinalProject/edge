@@ -8,24 +8,12 @@ namespace FaceRuntime::Preprocess
 {
     ScrfdPreprocessor::ScrfdPreprocessor(
         winrt::com_ptr<ID3D11Texture2D> firstTexture,
-        ScrfdGpuServices services,
         ScrfdPreprocessConfig config)
-        : config(config), services(std::move(services))
+        : config(config)
     {
         if (!firstTexture)
         {
             throw std::invalid_argument("firstTexture pointer is null.");
-        }
-        if (!this->services.importer)
-        {
-            throw std::invalid_argument(
-                "ScrfdPreprocessor: importer is null.");
-        }
-
-        if (!this->services.d3d12Device)
-        {
-            throw std::invalid_argument(
-                "ScrfdPreprocessor: d3d12Device is null.");
         }
 
         D3D11_TEXTURE2D_DESC desc{};
@@ -73,13 +61,6 @@ namespace FaceRuntime::Preprocess
             throw std::invalid_argument(
                 "ScrfdPreprocessor::preprocess: texture is null.");
         }
-
-        auto views = services.importer->importFrame(texture);
-
-        auto access = services.importer->access(views);
-
-        std::cout << "[SCRFD] access wrapped resource berhasil\n";
-        std::cout << "[SCRFD] import Y/UV berhasil\n";
 
         return nullptr;
     }

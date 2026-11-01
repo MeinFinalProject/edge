@@ -13,8 +13,8 @@ cbuffer Params : register(b0) {
 
     uint ResizedWidth;
     uint ResizedHeight;
-    float PadY;
-    float Reserved;
+    float Reserved0;
+    float Reserved1;
 }
 
 [numthreads(16, 16, 1)]

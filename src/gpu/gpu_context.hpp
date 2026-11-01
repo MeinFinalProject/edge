@@ -10,39 +10,41 @@
 
 namespace FaceRuntime::Gpu
 {
-    class CameraTextureImporter;
-};
-
-namespace FaceRuntime::Gpu
-{
     class GpuContext
     {
     public:
         GpuContext();
-        ~GpuContext() = default;
+        ~GpuContext();
 
         GpuContext(GpuContext const &) = delete;
         GpuContext &operator=(GpuContext const &) = delete;
 
-        winrt::Windows::AI::MachineLearning::LearningModelDevice getLearningDevice() const;
-        std::shared_ptr<CameraTextureImporter> getCameraTextureImporter() const;
-        winrt::com_ptr<ID3D11DeviceContext> getD3D11Context() const;
-        winrt::com_ptr<ID3D12Device> getD3D12Device() const;
-        winrt::com_ptr<ID3D12CommandQueue> getCommandQueue() const;
-        winrt::com_ptr<ID3D11Device> getD3D11Device() const;
+        [[nodiscard]] ID3D12Device *device() const
+        {
+            return d3d12Device.get();
+        }
+        [[nodiscard]] ID3D12CommandQueue *queue() const
+        {
+            return commandQueue.get();
+        }
+        [[nodiscard]] winrt::com_ptr<ID3D12Device> deviceRef() const
+        {
+            return d3d12Device;
+        }
+        [[nodiscard]] winrt::Windows::AI::MachineLearning::LearningModelDevice learningDevice() const
+        {
+            return learningModelDevice;
+        }
+
+        void waitIdle();
 
     private:
-        void initializeHardware();
-        void createAiContexts();
-
         winrt::com_ptr<ID3D12Device> d3d12Device;
         winrt::com_ptr<ID3D12CommandQueue> commandQueue;
-
-        winrt::com_ptr<ID3D11Device> d3d11Device;
-        winrt::com_ptr<ID3D11DeviceContext> d3d11Context;
-        winrt::com_ptr<ID3D11On12Device> d3d11On12Device;
+        winrt::com_ptr<ID3D12Fence> fence;
+        winrt::handle fenceEvent;
+        std::uint64_t lastFenceValue = 0;
 
         winrt::Windows::AI::MachineLearning::LearningModelDevice learningModelDevice{nullptr};
-        std::shared_ptr<CameraTextureImporter> textureImporter;
     };
 }

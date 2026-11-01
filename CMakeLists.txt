@@ -49,9 +49,9 @@ add_custom_command(
 
 add_executable(FaceRuntime 
     src/main.cpp
+    src/gpu/nv12_bridge.cpp
     src/camera/camera.cpp
     src/gpu/gpu_context.cpp
-    src/gpu/camera_texture_import.cpp
     src/preprocess/similarity_transform.cpp
     src/preprocess/preprocess_contracts.cpp
 )

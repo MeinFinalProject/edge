@@ -1,9 +1,11 @@
+#pragma once
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <chrono>
 #include <d3d11.h>
 #include <winrt/Windows.Graphics.DirectX.Direct3D11.h>
+#include <winrt/Windows.Media.Capture.Frames.h>
 
 namespace FaceRuntime
 {
@@ -16,6 +18,10 @@ namespace FaceRuntime
         std::uint32_t fps = 30;
     };
 
+    [[nodiscard]] winrt::com_ptr<ID3D11Texture2D>
+    TextureOf(
+        winrt::Windows::Media::Capture::Frames::MediaFrameReference const &frame);
+
     class Camera
     {
     public:
@@ -27,7 +33,8 @@ namespace FaceRuntime
 
         void start();
         void stop() noexcept;
-        [[nodiscard]] winrt::com_ptr<ID3D11Texture2D> waitForFrame(
+        [[nodiscard]] winrt::Windows::Media::Capture::Frames::MediaFrameReference
+        waitForFrame(
             std::chrono::milliseconds timeout);
 
     private:

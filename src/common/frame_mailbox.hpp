@@ -2,15 +2,16 @@
 
 #include <mutex>
 #include <condition_variable>
-#include <optional>
+#include <chrono>
 #include <utility>
+#include <winrt/Windows.Media.Capture.Frames.h>
 
 namespace FaceRuntime
 {
     class FrameMailbox
     {
     public:
-        void publish(winrt::com_ptr<ID3D11Texture2D> texture)
+        void publish(winrt::Windows::Media::Capture::Frames::MediaFrameReference texture)
         {
             {
                 std::scoped_lock lock(mutex);
@@ -35,26 +36,27 @@ namespace FaceRuntime
             readyCv.notify_all();
         }
 
-        [[nodiscard]] winrt::com_ptr<ID3D11Texture2D> waitForFrame(
+        [[nodiscard]] winrt::Windows::Media::Capture::Frames::MediaFrameReference
+        waitForFrame(
             std::chrono::milliseconds timeout)
         {
             std::unique_lock lock(mutex);
             if (!readyCv.wait_for(lock, timeout, [this]
-                                  { return latestTexture != nullptr || closed; }))
+                                  { return static_cast<bool>(latestTexture) || closed; }))
             {
                 return nullptr;
             }
 
-            if (closed)
+            if (closed || !latestTexture)
             {
                 return nullptr;
             }
 
-            return std::move(latestTexture);
+            return std::exchange(latestTexture, nullptr);
         }
 
     private:
-        winrt::com_ptr<ID3D11Texture2D> latestTexture;
+        winrt::Windows::Media::Capture::Frames::MediaFrameReference latestTexture{nullptr};
         std::mutex mutex;
         std::condition_variable readyCv;
         bool closed = false;

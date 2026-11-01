@@ -1,6 +1,15 @@
 #include "camera.hpp"
 #include "common/frame_mailbox.hpp"
+#include <atomic>
+#include <cmath>
+#include <condition_variable>
+#include <exception>
+#include <limits>
 #include <mutex>
+#include <optional>
+#include <stdexcept>
+#include <thread>
+#include <vector>
 
 #include <windows.graphics.directx.direct3d11.interop.h>
 #include <winrt/Windows.Foundation.h>
@@ -25,15 +34,6 @@ namespace
         ApartmentScope(ApartmentScope const &) = delete;
         ApartmentScope &operator=(ApartmentScope const &) = delete;
     };
-
-    winrt::com_ptr<ID3D11Texture2D> textureFromSurface(winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DSurface const &surface)
-    {
-        auto access = surface.as<::Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
-        winrt::com_ptr<ID3D11Texture2D> texture;
-
-        winrt::check_hresult(access->GetInterface(IID_PPV_ARGS(texture.put())));
-        return texture;
-    }
 }
 
 namespace FaceRuntime
@@ -237,22 +237,7 @@ namespace FaceRuntime
                 return;
             }
 
-            const auto videoFrame = frameReference.VideoMediaFrame();
-            if (!videoFrame)
-            {
-                return;
-            }
-
-            const auto surface = videoFrame.Direct3DSurface();
-            if (!surface)
-            {
-                throw std::runtime_error(
-                    "frame tidak memiliki Direct3DSurface");
-            }
-
-            auto texture = textureFromSurface(surface);
-
-            mailbox.publish(std::move(texture));
+            mailbox.publish(std::move(frameReference));
         }
         catch (...)
         {
@@ -334,9 +319,29 @@ namespace FaceRuntime
         }
     }
 
-    [[nodiscard]] winrt::com_ptr<ID3D11Texture2D> Camera::waitForFrame(
+    [[nodiscard]] winrt::Windows::Media::Capture::Frames::MediaFrameReference Camera::waitForFrame(
         std::chrono::milliseconds timeout)
     {
         return impl_->mailbox.waitForFrame(timeout);
+    }
+
+    winrt::com_ptr<ID3D11Texture2D> TextureOf(
+        winrt::Windows::Media::Capture::Frames::MediaFrameReference const &frame)
+    {
+        const auto video = frame.VideoMediaFrame();
+        if (!video)
+        {
+            throw std::runtime_error("frame kamera bukan frame video");
+        }
+        const auto surface = video.Direct3DSurface();
+        if (!surface)
+        {
+            throw std::runtime_error(
+                "frame tidak memiliki Direct3DSurface (kamera memakai jalur memori CPU?)");
+        }
+        auto access = surface.as<::Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
+        winrt::com_ptr<ID3D11Texture2D> texture;
+        winrt::check_hresult(access->GetInterface(IID_PPV_ARGS(texture.put())));
+        return texture;
     }
 }
