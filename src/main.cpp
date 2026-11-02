@@ -1,12 +1,12 @@
-#include <chrono>
 #include <iostream>
 #include <winrt/base.h>
-#include <winrt/Windows.Media.Capture.Frames.h>
-#include <winrt/Windows.Foundation.h>
-#include "camera/camera.hpp"
+#include "gpu/compute_kernel.hpp"
 #include "gpu/gpu_context.hpp"
-#include "gpu/nv12_bridge.hpp"
-using namespace std::chrono_literals;
+#include "gpu/tensor_buffer.hpp"
+#include "preprocess/kernel_constants.hpp"
+#include "scrfd_tensorize.h"
+#include "pad_tensorize.h"
+#include "arcface_tensorize.h"
 
 int main()
 {
@@ -14,35 +14,20 @@ int main()
     try
     {
         using namespace FaceRuntime;
-        CameraConfig cameraConfig;
         Gpu::GpuContext gpu;
-        Gpu::Nv12Bridge bridge(gpu.deviceRef());
-        Camera camera(cameraConfig);
-        camera.start();
 
-        const auto startTime = std::chrono::steady_clock::now();
-        int processed = 0;
-        int timeouts = 0;
-        while (std::chrono::steady_clock::now() - startTime < 10s)
-        {
-            auto frame = camera.waitForFrame(2000ms);
-            if (!frame)
-            {
-                ++timeouts;
-                continue;
-            }
-            auto texture = TextureOf(frame);
-            auto const nv12 = bridge.acquire(texture);
-            (void)nv12;
-            std::this_thread::sleep_for(100ms); // tiket dipegang 100 ms, seperti process() yang berat
-            frame.Close();
-            ++processed;
-        }
-        std::cout << "diproses " << processed << " frame dalam 10 s (harapan: sekitar 91), "
-                  << "timeout " << timeouts << ", tekstur di cache "
-                  << bridge.cachedTextureCount() << "\n";
+        // Jika root signature tidak cocok dengan shader, PSO gagal dibuat DI SINI.
+        Gpu::ComputeKernel scrfd(gpu.device(), g_scrfd_tensorize, sizeof(g_scrfd_tensorize),
+                                 sizeof(Preprocess::ScrfdConstants) / 4, 1);
+        Gpu::ComputeKernel pad(gpu.device(), g_pad_tensorize, sizeof(g_pad_tensorize),
+                               sizeof(Preprocess::WarpConstants) / 4, 2);
+        Gpu::ComputeKernel arc(gpu.device(), g_arcface_tensorize, sizeof(g_arcface_tensorize),
+                               sizeof(Preprocess::WarpConstants) / 4, 1);
+        std::cout << "3 PSO berhasil dibuat\n";
 
-        camera.stop();
+        Gpu::TensorBuffer t(gpu, {1, 3, 640, 640});
+        auto data = t.readbackToCpu(gpu);
+        std::cout << "tensor " << data.size() << " float (diharapkan 1228800)\n";
     }
     catch (winrt::hresult_error const &e)
     {

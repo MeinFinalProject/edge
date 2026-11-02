@@ -50,6 +50,9 @@ add_custom_command(
 add_executable(FaceRuntime 
     src/main.cpp
     src/gpu/nv12_bridge.cpp
+    src/gpu/command_recorder.cpp
+    src/gpu/compute_kernel.cpp
+    src/gpu/tensor_buffer.cpp
     src/camera/camera.cpp
     src/gpu/gpu_context.cpp
     src/preprocess/similarity_transform.cpp
