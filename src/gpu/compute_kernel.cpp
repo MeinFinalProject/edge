@@ -12,7 +12,8 @@ namespace FaceRuntime::Gpu
         std::uint32_t numUavs) : numRootConstants(numRootConstants),
                                  numUavs(numUavs)
     {
-        if (numUavs < 1 || numUavs > 2)
+        constexpr std::uint32_t kMaxUavs = 2;
+        if (numUavs < 1 || numUavs > kMaxUavs)
         {
             throw std::invalid_argument("ComputeKernel: numUavs harus 1 atau 2.");
         }
@@ -25,7 +26,7 @@ namespace FaceRuntime::Gpu
         srvRange.RegisterSpace = 0;      // ruang register 0
         srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-        D3D12_ROOT_PARAMETER rootParams[4]{};
+        D3D12_ROOT_PARAMETER rootParams[2 + kMaxUavs]{};
 
         // [Root Parameter 0] mendefinisikan Argumen ke-1 dari fungsi Shader.
         rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;

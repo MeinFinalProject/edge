@@ -18,6 +18,15 @@
 #include <winrt/Windows.Media.Capture.Frames.h>
 #include <winrt/Windows.Media.MediaProperties.h>
 
+#include <cwchar>
+#include <string>
+
+#include <dshow.h>
+#include <ks.h>
+#include <ksmedia.h>
+#include <ocidl.h>
+#include <oleauto.h>
+
 namespace
 {
     class ApartmentScope
@@ -34,6 +43,88 @@ namespace
         ApartmentScope(ApartmentScope const &) = delete;
         ApartmentScope &operator=(ApartmentScope const &) = delete;
     };
+
+    // 0 = frame rate dijaga konstan, 1 = driver boleh menurunkan fps saat gelap
+    constexpr long kLowLightProperty =
+        static_cast<long>(KSPROPERTY_CAMERACONTROL_AUTO_EXPOSURE_PRIORITY);
+    constexpr long kFixedFrameRateValue = 0;
+
+    // Mencari filter DirectShow dengan nama yang diberikan. Mengembalikan nullptr bila tidak ditemukan.
+    winrt::com_ptr<IBaseFilter> findDirectShowFilter(winrt::hstring const &friendlyName)
+    {
+        winrt::com_ptr<ICreateDevEnum> deviceEnum;
+        winrt::check_hresult(CoCreateInstance(
+            CLSID_SystemDeviceEnum,
+            nullptr,
+            CLSCTX_INPROC_SERVER,
+            IID_PPV_ARGS(deviceEnum.put())));
+
+        winrt::com_ptr<IEnumMoniker> enumMoniker;
+        const HRESULT hr = deviceEnum->CreateClassEnumerator(
+            CLSID_VideoInputDeviceCategory,
+            enumMoniker.put(),
+            0);
+        if (hr == S_FALSE)
+        {
+            return nullptr;
+        }
+        winrt::check_hresult(hr);
+
+        winrt::com_ptr<IMoniker> moniker;
+        while (enumMoniker->Next(1, moniker.put(), nullptr) == S_OK)
+        {
+            winrt::com_ptr<IPropertyBag> propertyBag;
+            if (FAILED(moniker->BindToStorage(nullptr, nullptr, IID_PPV_ARGS(propertyBag.put()))))
+            {
+                continue;
+            }
+
+            VARIANT name;
+            VariantInit(&name);
+            const bool matched =
+                SUCCEEDED(propertyBag->Read(L"FriendlyName", &name, nullptr)) &&
+                name.vt == VT_BSTR &&
+                name.bstrVal != nullptr &&
+                _wcsicmp(name.bstrVal, friendlyName.c_str()) == 0;
+            VariantClear(&name);
+
+            if (matched)
+            {
+                winrt::com_ptr<IBaseFilter> filter;
+                winrt::check_hresult(moniker->BindToObject(
+                    nullptr, nullptr, IID_PPV_ARGS(filter.put())));
+                return filter;
+            }
+        }
+        return nullptr;
+    }
+
+    // Mengatur low-light priority ke 0 (frame rate dijaga konstan) untuk kamera DirectShow yang dipilih.
+    void setFixedFrameRate(winrt::hstring const &cameraName)
+    {
+        const auto filter = findDirectShowFilter(cameraName);
+        if (!filter)
+        {
+            throw std::runtime_error(
+                "kamera \"" + winrt::to_string(cameraName) +
+                "\" tidak ditemukan di DirectShow");
+        }
+
+        const auto control = filter.as<IAMCameraControl>();
+        winrt::check_hresult(control->Set(
+            kLowLightProperty,
+            kFixedFrameRateValue,
+            CameraControl_Flags_Manual));
+
+        long observedValue = -1;
+        long observedFlags = 0;
+        winrt::check_hresult(control->Get(kLowLightProperty, &observedValue, &observedFlags));
+        if (observedValue != kFixedFrameRateValue)
+        {
+            throw std::runtime_error(
+                "driver tidak mempertahankan low-light priority yang diminta");
+        }
+    }
 }
 
 namespace FaceRuntime
@@ -168,6 +259,7 @@ namespace FaceRuntime
             throw std::runtime_error(
                 "color camera tidak memiliki preview atau record stream");
         }
+        setFixedFrameRate(selectedGroup.DisplayName());
 
         MediaCaptureInitializationSettings settings;
         settings.SourceGroup(selectedGroup);

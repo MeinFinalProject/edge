@@ -65,6 +65,9 @@ target_link_libraries(FaceRuntime PRIVATE
     d3d11.lib
     d3d12.lib
     dxgi.lib
+    strmiids 
+    ole32 
+    oleaut32
 )
 
 add_custom_target(preprocess_shaders DEPENDS ${SHADER_HEADERS})
