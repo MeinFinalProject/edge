@@ -49,12 +49,15 @@ add_custom_command(
 
 add_executable(FaceRuntime 
     src/main.cpp
+    src/camera/camera.cpp
     src/gpu/nv12_bridge.cpp
+    src/gpu/gpu_context.cpp
     src/gpu/command_recorder.cpp
     src/gpu/compute_kernel.cpp
     src/gpu/tensor_buffer.cpp
-    src/camera/camera.cpp
-    src/gpu/gpu_context.cpp
+    src/inference/onnx_model.cpp
+    src/inference/scrfd_detector.cpp
+    src/inference/scrfd_postprocess.cpp
     src/preprocess/similarity_transform.cpp
     src/preprocess/preprocess_contracts.cpp
 )
@@ -84,4 +87,12 @@ target_compile_definitions(FaceRuntime PRIVATE
     NOMINMAX
     UNICODE
     _UNICODE
+)
+
+# Perintah ini dieksekusi secara otomatis setiap kali FaceRuntime selesai di-build
+add_custom_command(TARGET FaceRuntime POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/models"
+    "$<TARGET_FILE_DIR:FaceRuntime>/models"
+    COMMENT "Mengopi folder models ke direktori output executable..."
 )

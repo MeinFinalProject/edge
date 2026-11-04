@@ -48,7 +48,7 @@ namespace FaceRuntime::Gpu
             factory->CreateFromD3D12CommandQueue(
                 commandQueue.get(),
                 unknownDevice.put()));
-        unknownDevice.as<winrt::Windows::AI::MachineLearning::LearningModelDevice>();
+        learningModelDevice = unknownDevice.as<winrt::Windows::AI::MachineLearning::LearningModelDevice>();
     }
 
     GpuContext::~GpuContext()

@@ -1,9 +1,6 @@
 #pragma once
 
-#include <d3d11_4.h>
 #include <d3d12.h>
-#include <d3d11on12.h>
-#include <dxgi1_6.h>
 #include <winrt/base.h>
 #include <winrt/Windows.AI.MachineLearning.h>
 #include <memory>
