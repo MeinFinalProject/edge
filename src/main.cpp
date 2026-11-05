@@ -6,6 +6,7 @@
 #include "gpu/gpu_context.hpp"
 #include "gpu/nv12_bridge.hpp"
 #include "inference/scrfd_detector.hpp"
+#include "tracking/byte_tracker.hpp"
 using namespace std::chrono_literals;
 
 int main()
@@ -22,8 +23,8 @@ int main()
 
         Inference::ScrfdDetector detector(
             gpu, Common::ExecutableDirectory() / "models" / "insightface" / "buffalo_l" / "det_10g.onnx", cameraConfig);
-        detector.printModelSignature(); // BANDINGKAN dengan Netron
-
+        detector.printModelSignature();
+        Tracking::ByteTracker tracker;
         for (int i = 0; i < 90; ++i)
         {
             auto frame = camera.waitForFrame(2000ms);
@@ -33,6 +34,13 @@ int main()
             auto const nv12 = bridge.acquire(texture);
 
             auto faces = detector.detect(nv12);
+            auto tracked = tracker.update(faces);
+            if (i % 10 == 0)
+                for (auto const &t : tracked.active)
+                    std::cout << "  track " << t.trackId << " skor=" << t.score
+                              << " det#" << t.detectionIndex << "\n";
+            for (int id : tracked.removedIds)
+                std::cout << "  track " << id << " dibuang\n";
             gpu.waitIdle(); // pastikan GPU selesai membaca tekstur kamera
             frame.Close();  // baru sekarang tiket dilepas
             if (i % 10 == 0)

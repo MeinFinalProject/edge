@@ -60,6 +60,8 @@ add_executable(FaceRuntime
     src/inference/scrfd_postprocess.cpp
     src/preprocess/similarity_transform.cpp
     src/preprocess/preprocess_contracts.cpp
+
+    src/tracking/byte_tracker.cpp
 )
 
 target_compile_features(FaceRuntime PRIVATE cxx_std_20)
