@@ -60,7 +60,8 @@ add_executable(FaceRuntime
     src/inference/scrfd_postprocess.cpp
     src/preprocess/similarity_transform.cpp
     src/preprocess/preprocess_contracts.cpp
-
+    src/preprocess/pad_preprocessor.cpp
+    src/inference/liveness_classifier.cpp
     src/tracking/byte_tracker.cpp
 )
 

@@ -1,10 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <winrt/Windows.AI.MachineLearning.h>
-#include <d3d11.h>
 #include <d3d12.h>
-#include <d3d11_4.h>
-#include <memory>
 
 #include "../gpu/command_recorder.hpp"
 #include "../gpu/compute_kernel.hpp"
@@ -12,6 +9,7 @@
 #include "../gpu/gpu_context.hpp"
 #include "../gpu/nv12_bridge.hpp"
 #include "../gpu/tensor_buffer.hpp"
+#include "similarity_transform.hpp"
 #include "../camera/camera.hpp"
 
 namespace FaceRuntime::Preprocess
@@ -61,13 +59,6 @@ namespace FaceRuntime::Preprocess
         Gpu::CommandRecorder recorder;
     };
 
-    struct SimilarityTransform2D
-    {
-        std::array<float, 6> srctoDst{};
-        std::array<float, 6> dsttoSrc{};
-        float rmse = 0.0F;
-    };
-
     // -------------------------------------------------------------------- PAD
     struct PadPreprocessingConfig
     {
@@ -86,7 +77,9 @@ namespace FaceRuntime::Preprocess
     class PadPreprocessor
     {
     public:
-        PadPreprocessor(Gpu::GpuContext &gpu, CameraConfig const &camera, PadPreprocessingConfig config = {});
+        PadPreprocessor(Gpu::GpuContext &gpu,
+                        CameraConfig const &camera,
+                        PadPreprocessingConfig config = {});
 
         // BLOKIR: menunggu GPU selesai karena counter OOB harus dibaca CPU.
         PreparedPadInput preprocess(Gpu::Nv12Frame const &frame, SimilarityTransform2D const &transform);

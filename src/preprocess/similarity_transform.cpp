@@ -1,4 +1,7 @@
 #include "similarity_transform.hpp"
+#include <cmath>
+#include <stdexcept>
+#include <utility>
 
 namespace FaceRuntime::Preprocess
 {
@@ -108,5 +111,31 @@ namespace FaceRuntime::Preprocess
         result.rmse = std::sqrt(squaredErrorSum / 5.0F);
 
         return result;
+    }
+
+    float ComputeOutOfBoundsRatio(
+        SimilarityTransform2D const &transform,
+        std::uint32_t dstWidth, std::uint32_t dstHeight,
+        std::uint32_t srcWidth, std::uint32_t srcHeight)
+    {
+        const auto &m = transform.dsttoSrc;
+        std::uint32_t outOfBounds = 0;
+        for (std::uint32_t y = 0; y < dstHeight; ++y)
+        {
+            for (std::uint32_t x = 0; x < dstWidth; ++x)
+            {
+                const float dx = static_cast<float>(x) + 0.5F; // titik tengah piksel, sama dengan shader
+                const float dy = static_cast<float>(y) + 0.5F;
+                const float sx = m[0] * dx + m[1] * dy + m[2];
+                const float sy = m[3] * dx + m[4] * dy + m[5];
+                if (sx < 0.0F || sx >= static_cast<float>(srcWidth) ||
+                    sy < 0.0F || sy >= static_cast<float>(srcHeight))
+                {
+                    ++outOfBounds;
+                }
+            }
+        }
+        return static_cast<float>(outOfBounds) /
+               static_cast<float>(dstWidth * dstHeight);
     }
 }

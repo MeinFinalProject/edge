@@ -6,6 +6,7 @@
 #include "gpu/gpu_context.hpp"
 #include "gpu/nv12_bridge.hpp"
 #include "inference/scrfd_detector.hpp"
+#include "inference/liveness_classifier.hpp"
 #include "tracking/byte_tracker.hpp"
 using namespace std::chrono_literals;
 
@@ -23,6 +24,9 @@ int main()
 
         Inference::ScrfdDetector detector(
             gpu, Common::ExecutableDirectory() / "models" / "insightface" / "buffalo_l" / "det_10g.onnx", cameraConfig);
+        Inference::LivenessClassifier liveness(
+            gpu, Common::ExecutableDirectory() / "models" / "insightface" / "addons" / "liveness.onnx", cameraConfig);
+
         detector.printModelSignature();
         Tracking::ByteTracker tracker;
         for (int i = 0; i < 90; ++i)
@@ -46,7 +50,7 @@ int main()
             if (i % 10 == 0)
             {
                 std::cout << "frame " << i << ": " << faces.size() << " wajah\n";
-                for (auto const &f : faces)
+                for (auto &f : faces)
                 {
                     auto const &lm = f.landmarks;
                     // Sanity landmark: mata kiri.x < mata kanan.x ; hidung di antara mata ;
@@ -57,6 +61,10 @@ int main()
                               << f.box.x2 << "," << f.box.y2 << ")"
                               << " mataKiri=(" << lm[0].x << "," << lm[0].y << ")"
                               << " urutanLandmark=" << (ok ? "OK" : "SALAH") << "\n";
+
+                    const float liveProb = liveness.realProbability(nv12, f);
+                    if (i % 10 == 0)
+                        std::cout << "  probabilitas live=" << liveProb << "\n";
                 }
             }
         }
