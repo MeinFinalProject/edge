@@ -41,25 +41,30 @@ int main()
             auto tracked = tracker.update(faces);
             if (i % 10 == 0)
                 for (auto const &t : tracked.active)
-                    std::cout << "  track " << t.trackId << " skor=" << t.score
-                              << " det#" << t.detectionIndex << "\n";
+                    std::cout << "  TRACK " << t.trackId << " SKOR=" << t.score;
             for (int id : tracked.removedIds)
                 std::cout << "  track " << id << " dibuang\n";
             gpu.waitIdle(); // pastikan GPU selesai membaca tekstur kamera
             frame.Close();  // baru sekarang tiket dilepas
             if (i % 10 == 0)
             {
-                std::cout << "frame " << i << ": " << faces.size() << " wajah\n";
+                std::cout << "\n\n\nFRAME " << i << ": " << faces.size() << " WAJAH\n";
                 for (auto &f : faces)
                 {
                     auto const &lm = f.landmarks;
                     // Sanity landmark: mata kiri.x < mata kanan.x ; hidung di antara mata ;
                     // mulut di bawah hidung.
                     const bool ok = lm[0].x < lm[1].x && lm[2].y > lm[0].y && lm[3].y > lm[2].y;
-                    std::cout << "  skor=" << f.score
-                              << " box=(" << f.box.x1 << "," << f.box.y1 << ")-("
-                              << f.box.x2 << "," << f.box.y2 << ")"
-                              << " mataKiri=(" << lm[0].x << "," << lm[0].y << ")"
+                    std::cout << " skor keyakinan deteksi=" << f.score << "\n"
+                              << " KOORDINAT:" << "\n"
+                              << " box kiri atas=(" << f.box.x1 << "," << f.box.y1 << ")\n"
+                              << " box kanan bawah=(" << f.box.x2 << "," << f.box.y2 << ")\n"
+                              << "\n\n LANDMARK: " << "\n"
+                              << " mata kiri=(" << lm[0].x << "," << lm[0].y << ")\n"
+                              << " mata kanan=(" << lm[1].x << "," << lm[1].y << ")\n"
+                              << " hidung=(" << lm[2].x << "," << lm[2].y << ")\n"
+                              << " mulut kiri=(" << lm[3].x << "," << lm[3].y << ")\n"
+                              << " mulut kanan=(" << lm[4].x << "," << lm[4].y << ")\n"
                               << " urutanLandmark=" << (ok ? "OK" : "SALAH") << "\n";
 
                     const float liveProb = liveness.realProbability(nv12, f);
