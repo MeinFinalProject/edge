@@ -1,26 +1,29 @@
 #pragma once
 #include <algorithm>
 #include <array>
-#include "point2f.hpp"
 
 namespace FaceRuntime::Common
 {
+    struct Point2f
+    {
+        float x = 0.0F;
+        float y = 0.0F;
+    };
+
     // Kotak dengan format sudut kiri-atas (x1,y1)
     // dan kanan-bawah (x2,y2), satuan piksel.
     struct BoxXyxy
     {
-        float x1 = 0.0f;
-        float y1 = 0.0f;
-        float x2 = 0.0f;
-        float y2 = 0.0f;
+        Point2f topLeft{};
+        Point2f bottomRight{};
 
         [[nodiscard]] float width() const
         {
-            return x2 - x1;
+            return bottomRight.x - topLeft.x;
         }
         [[nodiscard]] float height() const
         {
-            return y2 - y1;
+            return bottomRight.y - topLeft.y;
         }
         [[nodiscard]] float area() const
         {

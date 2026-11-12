@@ -19,6 +19,8 @@ namespace FaceRuntime::Gpu
             GpuContext &gpu);
         // Bila kiriman sebelumnya mungkin masih berjalan, menunggu GPU idle dulu
         // (allocator tidak boleh di-reset selagi GPU memakainya).
+        // memulai command list baru (kosong)
+        // untuk diisi perintah GPU.
         ID3D12GraphicsCommandList *begin();
 
         void submit();

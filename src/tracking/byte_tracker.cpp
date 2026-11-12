@@ -111,8 +111,8 @@ namespace FaceRuntime::Tracking
         {
             const double w = b.width();
             const double h = b.height();
-            return {b.x1 + w / 2.0,
-                    b.y1 + h / 2.0,
+            return {b.topLeft.x + w / 2.0,
+                    b.topLeft.y + h / 2.0,
                     w / std::max(h, 1e-6),
                     h};
         };
@@ -122,10 +122,10 @@ namespace FaceRuntime::Tracking
             const double h = m[3];
             const double w = m[2] * h;
             Common::BoxXyxy b;
-            b.x1 = static_cast<float>(m[0] - w / 2.0);
-            b.y1 = static_cast<float>(m[1] - h / 2.0);
-            b.x2 = static_cast<float>(m[0] + w / 2.0);
-            b.y2 = static_cast<float>(m[1] + h / 2.0);
+            b.topLeft.x = static_cast<float>(m[0] - w / 2.0);
+            b.topLeft.y = static_cast<float>(m[1] - h / 2.0);
+            b.bottomRight.x = static_cast<float>(m[0] + w / 2.0);
+            b.bottomRight.y = static_cast<float>(m[1] + h / 2.0);
             return b;
         };
 
@@ -531,10 +531,10 @@ namespace FaceRuntime::Tracking
         float Iou(Common::BoxXyxy const &a,
                   Common::BoxXyxy const &b)
         {
-            const float ix1 = std::max(a.x1, b.x1);
-            const float iy1 = std::max(a.y1, b.y1);
-            const float ix2 = std::min(a.x2, b.x2);
-            const float iy2 = std::min(a.y2, b.y2);
+            const float ix1 = std::max(a.topLeft.x, b.topLeft.x);
+            const float iy1 = std::max(a.topLeft.y, b.topLeft.y);
+            const float ix2 = std::min(a.bottomRight.x, b.bottomRight.x);
+            const float iy2 = std::min(a.bottomRight.y, b.bottomRight.y);
 
             // Area irisan
             const float iw = std::max(0.0F, ix2 - ix1);
